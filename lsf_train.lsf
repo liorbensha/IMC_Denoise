@@ -1,0 +1,31 @@
+#BSUB -J IMC_Denoise_train_CD8
+#BSUB -q leeat-gpu
+#BSUB -R rusage[mem=10GB]
+#BSUB -R affinity[thread*2]
+#BSUB -gpu num=1:j_exclusive=yes:gmem=40GB
+
+# activate conda env
+source /etc/profile.d/modules.sh;
+module load anaconda/3.7.3;
+source activate IMC_Denoise;  
+
+# run this file
+
+# train without saving patches
+python3 scripts/Generate_data_and_training_DeepSNiF_script.py \
+    --channel_name 'CD8' \
+    --weights_name 'weights_CD8.hdf5' \
+    --Raw_directory '../Data/Train/noisy/Sameeha' \
+    --train_epoches '20' \
+    --train_batch_size '128' \
+    --val_set_percent '0.15' \
+    --n_neighbours '4' \
+    --n_iter '3' \
+    --slide_window_size '3' \
+    --ratio_thresh '0.8' \
+    --lambda_HF '3e-6' \
+    --train_initial_lr '1e-3' \
+    --truncated_max_rate '0.99999' \
+    --network_size 'small'
+
+

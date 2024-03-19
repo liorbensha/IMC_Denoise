@@ -169,6 +169,7 @@ class DeepSNiF_DataGenerator():
     
         print('Image data loaded from ...\n')
         for sub_img_folder in img_folders:
+            sub_img_folder = join(sub_img_folder, 'TIFs/')
             Img_list = [f for f in listdir(sub_img_folder) if isfile(join(sub_img_folder, f)) & (f.endswith(".tiff") or f.endswith(".tif"))]
             for Img_file in Img_list:
                 if self.channel_name.lower() in Img_file.lower():
