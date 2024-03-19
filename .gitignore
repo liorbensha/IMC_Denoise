@@ -1,0 +1,7 @@
+DIMR_processed_image_folders
+IMC_Denoise_processed_image_folders
+trained_weights
+.*
+!.gitignore
+__pycache__
+/__pycache__*
