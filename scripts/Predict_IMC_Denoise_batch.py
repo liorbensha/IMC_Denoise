@@ -5,6 +5,13 @@ import time
 import gc
 import os
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
+print('Num GPUs Available: ', len(tf.config.list_physical_devices('GPU')))
+import sys
+sys.path.append('.')
+
 import argparse
 from os import listdir
 from os.path import isfile, join, abspath, exists
@@ -79,6 +86,7 @@ Image_collect = []
 Img_folders = glob(join(args.load_directory, "*", ""))
 myDIMR = DIMR(n_neighbours = args.n_neighbours, n_iter = args.n_iter, window_size = args.slide_window_size)
 for Sub_img_folder in Img_folders:
+    Sub_img_folder = os.path.join(Sub_img_folder, 'TIFs/')
     Img_list = [f for f in listdir(Sub_img_folder) if isfile(join(Sub_img_folder, f)) & (f.endswith(".tiff") or f.endswith(".tif"))]
     for Img_file in Img_list:
         if args.channel_name.lower() in Img_file.lower():

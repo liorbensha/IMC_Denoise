@@ -1,26 +1,24 @@
-#BSUB -J IMC_Denoise_inference_CD8
+#BSUB -J IMC_Denoise_inference_CD45
 #BSUB -q leeat-gpu
-#BSUB -R rusage[mem=10GB]
+#BSUB -R rusage[mem=100GB]
 #BSUB -R affinity[thread*2]
 #BSUB -gpu num=1:j_exclusive=yes:gmem=40GB
 
 # activate conda env
-source /etc/profile.d/modules.sh;
-module load anaconda/3.7.3;
 source activate IMC_Denoise;  
 
 # run this file
 
 # DIMR+DeepSNiF
 python3 scripts/Predict_IMC_Denoise_batch.py \
-    --channel_name 'CD8' \
+    --channel_name 'CD45' \
     --load_directory '../Data/Train/noisy/Sameeha' \
     --save_directory 'IMC_Denoise_processed_image_folders' \
-    --weights_name 'weights_CD8.hdf5' \
+    --weights_name 'weights_CD45.hdf5' \
     --weights_save_directory 'trained_weights' \
     --n_neighbours '4' \
     --n_iter '3' \
     --slide_window_size '3' \
-    --network_size 'small'
+    --network_size 'normal'
 
 

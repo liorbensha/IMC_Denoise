@@ -14,6 +14,12 @@ python scripts/Generate_data_and_training_DeepSNiF_script.py --channel_name '141
                                                             --network_size 'small'
                                              
 """
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
+print('Num GPUs Available: ', len(tf.config.list_physical_devices('GPU')))
+import sys
+sys.path.append('.')
 from IMC_Denoise.IMC_Denoise_main.DeepSNiF import DeepSNiF
 from IMC_Denoise.DeepSNiF_utils.DeepSNiF_DataGenerator import DeepSNiF_DataGenerator
 import argparse
