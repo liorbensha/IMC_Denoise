@@ -2,18 +2,20 @@ import os
 from os.path import join
 from scipy import ndimage
 from skimage.io import imread
+from scipy.stats import ks_2samp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy import stats
 import seaborn as sns
 from tqdm import tqdm
 
 input_dir = "IMC_Denoise_processed_image_folders"
 
 # metrics to calculate
-image_intensity_distributions = True # [True | False]
-CNR_STDB = True # [True | False]
+image_intensity_distributions = False # [True | False]
+CNR_STDB = False # [True | False]
+KS_test = True # [True | False]
+hist_intersection = True # [True | False]
 # SSIM = True # [True | False]
 # PSNR = True # [True | False]
 
@@ -149,6 +151,33 @@ def plot_protein_boxplots(input_dir, CNR_raw_df, CNR_pred_df, STDB_raw_df, STDB_
         plt.savefig(join(output_dir, f'{protein}_boxplots.png'))
         plt.close()
 
+def KS_test_metric(fov_dir, protein, target_image, signal_mask, KS_df):
+    # Get non-zero pixel values for signal and background regions
+    signal_values = target_image[np.nonzero(signal_mask)]
+    bg_values = target_image[np.nonzero(~signal_mask)]
+    
+    # Perform KS test
+    ks_statistic, ks_pvalue = ks_2samp(signal_values, bg_values)
+    
+    # Assign scores to KS_df
+    KS_df.loc[fov_dir, protein] = ks_statistic
+
+
+def histogram_intersection_metric(fov_dir, protein, target_image, signal_mask, HI_df, num_bins=25500):
+    # Get non-zero pixel values for signal and background regions
+    signal_values = target_image[np.nonzero(signal_mask)]
+    bg_values = target_image[np.nonzero(~signal_mask)]
+
+    # Compute histograms
+    signal_hist, _ = np.histogram(signal_values, bins=num_bins, range=(0, 255), density=True)
+    bg_hist, _ = np.histogram(bg_values, bins=num_bins, range=(0, 255), density=True)
+
+    # Calculate histogram intersection
+    intersection = np.minimum(signal_hist, bg_hist).sum()
+
+    # Assign intersection value to HI_df
+    HI_df.loc[fov_dir, protein] = intersection / (num_bins / 255)
+
 # get lists of protein and FOVs
 proteins_list = get_prtoein_list(input_dir)
 fovs_list = [fov for fov in os.listdir(input_dir) if os.path.isdir(join(input_dir, fov, 'TIFs'))]
@@ -159,6 +188,10 @@ if CNR_STDB:
     CNR_pred_df = pd.DataFrame(index=fovs_list, columns=proteins_list)
     STDB_raw_df = pd.DataFrame(index=fovs_list, columns=proteins_list)
     STDB_pred_df = pd.DataFrame(index=fovs_list, columns=proteins_list)
+if KS_test:
+    KS_df = pd.DataFrame(index=fovs_list, columns=proteins_list)
+if hist_intersection:
+    HI_df = pd.DataFrame(index=fovs_list, columns=proteins_list)
 
 # iterate over all FOVs and proteins
 for fov_dir in tqdm(fovs_list, desc='FOV Directories'):
@@ -170,13 +203,19 @@ for fov_dir in tqdm(fovs_list, desc='FOV Directories'):
         pred_img = imread(join(fov_path, f'{protein}_pred.tif'))
         struct = ndimage.generate_binary_structure(2,2)
         mask = ndimage.binary_dilation(clean_img > 0, structure=struct, iterations=1)
+        if not (True in mask):
+            continue
         pred_image_pixelized = pred_img * (raw_img > 0)
         # merics
         if image_intensity_distributions:
-            img_intensities_distribution(fov_dir, protein, raw_img, pred_img, mask, input_dir)
+            img_intensities_distribution(fov_dir, protein, raw_img, pred_image_pixelized, mask, input_dir)
         if CNR_STDB:
             CNR_STDB_metric(fov_dir, protein, raw_img, mask, CNR_raw_df, STDB_raw_df)
-            CNR_STDB_metric(fov_dir, protein, pred_img, mask, CNR_pred_df, STDB_pred_df)
+            CNR_STDB_metric(fov_dir, protein, pred_image_pixelized, mask, CNR_pred_df, STDB_pred_df)
+        if KS_test:
+            KS_test_metric(fov_dir, protein, pred_image_pixelized, mask, KS_df)
+        if hist_intersection:
+            histogram_intersection_metric(fov_dir, protein, pred_image_pixelized, mask, HI_df)
 
 if CNR_STDB:
     CNR_raw_df.to_csv(join(input_dir, 'CNR_raw_scores.csv'))
@@ -184,3 +223,7 @@ if CNR_STDB:
     STDB_raw_df.to_csv(join(input_dir, 'STDB_raw_scores.csv'))
     STDB_pred_df.to_csv(join(input_dir, 'STDB_pred_scores.csv'))
     plot_protein_boxplots(input_dir, CNR_raw_df, CNR_pred_df, STDB_raw_df, STDB_pred_df)
+if KS_test:
+    KS_df.to_csv(join(input_dir, 'KS_df.csv'))
+if hist_intersection:
+    HI_df.to_csv(join(input_dir, 'HI_df.csv'))
