@@ -12,6 +12,9 @@ print('Num GPUs Available: ', len(tf.config.list_physical_devices('GPU')))
 import sys
 sys.path.append('.')
 
+import shutil
+import skimage.io as io 
+from scipy import ndimage
 import argparse
 from os import listdir
 from os.path import isfile, join, abspath, exists
@@ -116,7 +119,7 @@ print('The range is %f.' % myrange)
 input_ = Input (shape = (None, None, 1))
 act_ = network_used(input_, 'Pred_', loss_func = args.loss_func)
 model = Model (inputs= input_, outputs=act_)
-model.compile(optimizer = optimizers.Adam(lr=1e-3), loss = create_I_divergence(lambda_HF = 0))
+model.compile(optimizer = optimizers.Adam(learning_rate=1e-3), loss = create_I_divergence(lambda_HF = 0))
 model.load_weights(trained_weights)
 print('Model loaded!')
 
@@ -162,7 +165,28 @@ for ii in range(Img_num):
     sub_save_directory = join(args.save_directory, Sub_img_folder[len(args.load_directory)+1:])
     if not exists(sub_save_directory):
         os.makedirs(sub_save_directory)
-    tp.imsave(join(sub_save_directory, Img_name), Img_denoised.astype('float32'))
+    # Save processed image
+    processed_img_path = join(sub_save_directory, f"{Img_name.split('.')[0]}_pred.{Img_name.split('.')[1]}")
+    tp.imwrite(processed_img_path, Img_denoised.astype('float32'))
+
+    # Copy original image with '_raw' suffix
+    raw_img_path = join(sub_save_directory, f"{Img_name.split('.')[0]}_raw.{Img_name.split('.')[1]}")
+    shutil.copy(join(Sub_img_folder, Img_name), raw_img_path)
+
+    # Modify Sub_img_folder to replace '/noisy/' with '/clean/'
+    clean_folder = Sub_img_folder.replace('/noisy/', '/clean/')
+    # Copy clean image with '_clean' suffix
+    clean_img_path = join(sub_save_directory, f"{Img_name.split('.')[0]}_clean.{Img_name.split('.')[1]}")
+    shutil.copy(join(clean_folder, Img_name), clean_img_path)
+
+    # Apply binary dilation to clean image
+    clean_img = io.imread(join(clean_folder, Img_name))
+    struct = ndimage.generate_binary_structure(2,2)
+    mask = ndimage.binary_dilation(clean_img > 0, structure=struct, iterations=2)
+
+    # Save the binary mask
+    mask_path = join(sub_save_directory, f"{Img_name.split('.')[0]}_mask.{Img_name.split('.')[1]}")
+    io.imsave(mask_path, mask.astype('uint8'), check_contrast=False)
 
     print(sub_save_directory + Img_name + ' saved!')
  
